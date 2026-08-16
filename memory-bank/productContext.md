@@ -15,10 +15,12 @@ The automated trading landscape usually offers either "black-box" systems you ca
     -   They should see the real-time Confidence Score (above or below the 60% threshold).
     -   They should read an ongoing, human-readable narrative of the bot's decisions.
 -   **Zero-Anxiety Operation**: Because of the strict 3% Circuit Breaker and PM2 self-healing containerization, the user should be comfortable going to sleep while the system runs, treating it like a well-oiled mechanical engine.
+-   **Mobile Edge Data Harvester (Phone 7/24)**: The user installs the standalone APK onto a dedicated mobile phone to autonomously harvest microstructure data (L2 depth, funding rates, trade outcomes) 24/7 without needing a power-hungry PC running constantly.
 
 ## How It Should Work
-1.  **Sensory Input**: The bot ingests async data from XM, processing Log Returns and Volatility Clusters on the fly.
-2.  **Brain Evaluation**: The CNN-LSTM model reviews the chart visual mapping, identifies the market regime, and outputs a Confidence Score.
+1.  **Sensory Input**: The bot ingests async data from XM & HyperLiquid, processing Log Returns and Volatility Clusters on the fly.
+2.  **Brain Evaluation**: The CNN-LSTM model & Kronos Transformer review the market geometry, identify the regime, and output a Confidence Score.
 3.  **Adaptive Skeleton**: If confidence > 60%, the Dynamic GRID adjusts its Fibonacci spacing based on the current Volatility. 
-4.  **Safety Check**: The Execution Manager verifies the 3% daily equity limit hasn't been breached, tracks anticipated slippage, and executes.
-5.  **Feedback**: Decision logic is converted to XAI logs and sent to the Next.js Dashboard alongside the live Heatmap.
+4.  **Safety Check**: The Execution Manager verifies daily equity limits, tracks anticipated slippage, and executes.
+5.  **Telemetry & Feedback Loop**: Data is logged locally on the phone (`trade_memory.db`) and synced back to the PC central training station to continuously retrain the AI models.
+6.  **Lightweight CI/CD**: Zero-local-overhead Android APK generation via GitHub Actions / Google Colab without installing heavy Android Studio suites.

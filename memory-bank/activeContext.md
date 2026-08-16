@@ -41,12 +41,17 @@
    - API anahtarları, şifreler, cüzdan özel anahtarları, `.env` dosyaları engellendi.
    - SQLite veritabanları, kullanıcı telemetri kayıtları, device ID'ler engellendi.
    - 3. parti telifli veya devasa referans repolar (`reference_projects/`, `roadmap-moondev/`) engellendi.
-   - Android derleme çıktıları (`.apk`, `build/`, `.gradle/`, `.buildozer/`) engellendi.
+
+7. **Android Mobil Veri Toplama & Edge İstasyonu (Mobile Data Harvester)**:
+   - **Hedef**: Telefona kurulan botun 7/24 kesintisiz çalışarak gerçek zamanlı piyasa mikroyapı verilerini (`trade_memory.db`) toplaması.
+   - **Sıfır Android Studio Bağımlılığı**: Bilgisayarı yormamak için APK derleme işlemi doğrudan **GitHub Actions CI/CD** veya **Google Colab** üzerinden bulutta yapılıyor.
+   - **Eğitim Döngüsü**: Telefondan aktarılan veriler PC'de `HyperNova/tools/train_from_phone_data.py` ile eğitilip en karlı kurallar (`edge_learned_rules.json`) olarak bota geri besleniyor.
+   - **Canlı Takip & Önizleme**: `scrcpy` (sıfır gecikmeli telefon yansıtma) veya Web Dashboard ile anlık izleme.
 
 ## What To Do Next
-- Collect live trade logs into a persistent Parquet/SQLite experience buffer (Replay Buffer).
-- Train Offline Reinforcement Learning (Decision Transformer / PPO) on collected trade data for continuous self-improving policy updates.
-- Expand asset universe to top trending tokens during high-volatility sessions.
+- Telefon veritabanı senkronizasyonunu otomatikleştirmek (ADB / WiFi transfer scripti).
+- Telefondan toplanan L2 derinlik ve fonlama verileriyle modelin kazanma oranını (Win Rate) optimize eden çevrimdışı RL / Decision Transformer eğitimini çalıştırmak.
+- Varlık evrenini yüksek volatiliteye sahip trend token'larla genişletmek.
 
 ## Key File Locations
 - Live Scalper: `HyperNova/run_live.py`
