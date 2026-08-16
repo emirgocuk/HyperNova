@@ -18,7 +18,7 @@ source.include_exts = py,png,jpg,kv,atlas,html,css,js,json,db
 # (str) Application versioning (method 1)
 version = 1.0.0
 
-# (list) Pure-Python Requirements (ZERO C++ compilation needed, 45 seconds ultra fast build!)
+# (list) Pure-Python Requirements (Ultra fast build, zero C++ compile crashes)
 requirements = python3,flask,requests,urllib3,flask_socketio,flask_cors,setuptools
 
 # (str) Supported orientation
@@ -26,6 +26,10 @@ orientation = portrait
 
 # (list) Permissions
 android.permissions = INTERNET,ACCESS_NETWORK_STATE,WAKE_LOCK,FOREGROUND_SERVICE,RECEIVE_BOOT_COMPLETED
+
+# (str) Bootstrap for web applications
+p4a.bootstrap = webview
+p4a.port = 5000
 
 # (int) Target Android API
 android.api = 34
@@ -40,3 +44,4 @@ android.services = HyperNovaService:run_live.py:foreground
 [buildozer]
 log_level = 2
 warn_on_root = 0
+

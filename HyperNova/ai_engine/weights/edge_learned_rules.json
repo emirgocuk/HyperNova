@@ -1,9 +1,9 @@
 {
     "version": "2.0.0",
-    "generated_at": "2026-08-16T17:07:02.543556",
-    "total_training_samples": 102,
-    "win_rate_achieved": 52.94,
-    "total_pnl_usd": 8.88,
+    "generated_at": "2026-08-16T19:29:16.962016",
+    "total_training_samples": 207,
+    "win_rate_achieved": 54.11,
+    "total_pnl_usd": 13.49,
     "optimal_long_oir_min": 0.05,
     "optimal_alpha_min": 5.0,
     "trailing_pullback_pct": 0.0003,
