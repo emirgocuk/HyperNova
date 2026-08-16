@@ -46,6 +46,8 @@ build/
 eggs/
 .eggs/
 *.spec
+!buildozer.spec
+!android/buildozer.spec
 
 # --- 4. VIRTUAL ENVIRONMENTS & JS DEPENDENCIES ---
 venv/
