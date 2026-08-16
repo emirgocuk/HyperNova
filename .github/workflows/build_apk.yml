@@ -30,8 +30,8 @@ jobs:
         path: |
           ~/.buildozer
           ~/.android
-          android/.buildozer
-        key: ${{ runner.os }}-buildozer-${{ hashFiles('android/buildozer.spec') }}
+          .buildozer
+        key: ${{ runner.os }}-buildozer-${{ hashFiles('buildozer.spec') }}
         restore-keys: |
           ${{ runner.os }}-buildozer-
 
@@ -44,11 +44,10 @@ jobs:
 
     - name: Build Standalone APK with Buildozer
       run: |
-        cd android
         buildozer android debug
 
     - name: Upload Standalone APK Artifact
       uses: actions/upload-artifact@v4
       with:
         name: HyperNova-Standalone-Android-APK
-        path: android/bin/*.apk
+        path: bin/*.apk
