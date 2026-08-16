@@ -1,0 +1,27 @@
+# Core AI / ML
+torch
+numpy
+pandas
+
+# Web API
+fastapi
+uvicorn[standard]
+
+# Broker Integration
+MetaTrader5
+ccxt
+
+# Database
+redis
+psycopg2-binary
+
+# Utilities
+python-dotenv
+requests
+schedule
+termcolor
+logging
+
+# Legacy (kept for backwards compat)
+backtesting
+pandas_ta

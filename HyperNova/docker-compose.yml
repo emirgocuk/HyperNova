@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  # Redis for Hot Data Stream (Pub/Sub)
+  redis:
+    image: redis:7.0-alpine
+    container_name: transparent_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # TimescaleDB for Historical Time-Series Data
+  timescaledb:
+    image: timescale/timescaledb:latest-pg14
+    container_name: transparent_timescale
+    environment:
+      POSTGRES_USER: trader
+      POSTGRES_PASSWORD: supersecretpassword
+      POSTGRES_DB: trading_engine
+    ports:
+      - "5432:5432"
+    volumes:
+      - timescale_data:/var/lib/postgresql/data
+      # Mount initialization script
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U trader -d trading_engine"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  redis_data:
+  timescale_data:

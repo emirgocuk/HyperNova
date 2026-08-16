@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HyperNova - Merkezi Yapay Zeka Eğitim İstasyonu</title>
+    <link rel="stylesheet" href="/static/style.css?v=3">
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <div class="logo-icon">🧠</div>
+                <div class="logo-text">
+                    <h1>HyperNova AI Hub</h1>
+                    <p>Federe Yapay Zeka & Dağıtık Telemetri İstasyonu</p>
+                </div>
+            </div>
+            <div style="display:flex; gap:12px; align-items:center;">
+                <a href="/" style="background:rgba(75,85,255,0.2); color:#e6e8f0; text-decoration:none; padding:8px 18px; border-radius:8px; border:1px solid rgba(75,85,255,0.4); font-weight:700; font-size:13px;">
+                    📊 Canlı Scalper Paneli
+                </a>
+                <button onclick="startTraining()" id="btn-train-header" style="background:linear-gradient(135deg, #10b981, #059669); color:#fff; border:none; padding:8px 20px; border-radius:8px; font-weight:800; cursor:pointer; font-size:13px; box-shadow:0 0 15px rgba(16,185,129,0.4);">
+                    🚀 Modeli Şimdi Eğit
+                </button>
+            </div>
+        </header>
+
+        <!-- Stats Grid -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">📱 Bağlı Telefon / Düğüm</div>
+                <div class="stat-value" id="total-nodes">1</div>
+                <div class="stat-change" style="color:#10b981;">Aktif Veri Üreticileri</div>
+            </div>
+            <div class="stat-card highlight">
+                <div class="stat-label">📦 Toplam Biriken Canlı İşlem</div>
+                <div class="stat-value" id="total-trades">0</div>
+                <div class="stat-change" id="data-lake-files">0 Telemetri Paketi</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">🏆 Model Kazanma Oranı</div>
+                <div class="stat-value" id="model-winrate">-%</div>
+                <div class="stat-change" id="model-version">Model: Hazır</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">🎯 Optimal L2 OIR Eşiği</div>
+                <div class="stat-value" id="model-oir">-%</div>
+                <div class="stat-change">Yapay Zekanın Öğrendiği Kural</div>
+            </div>
+        </div>
+
+        <!-- Training Action & Active Nodes Grid -->
+        <div class="main-grid">
+            <!-- Training Controls & Logs -->
+            <div class="chart-container">
+                <h2>
+                    <span>🚀 Federe Model Eğitimi</span>
+                    <span id="train-status-badge" style="font-size:12px; padding:3px 10px; border-radius:6px; background:rgba(75,85,255,0.2); color:var(--accent-cyan);">Hazır</span>
+                </h2>
+                <p style="color:var(--text-secondary); font-size:13px; margin-bottom:16px;">
+                    Arkadaşlarınızın telefonlarından ve yerel cihazınızdan gelen tüm L2 tahta derinliği, osilatör ve kâr/zarar verileri birleştirilerek zarar ettiren sahte sinyaller (fakeout) elenir.
+                </p>
+                <div style="display:flex; gap:12px; margin-bottom:20px;">
+                    <button onclick="startTraining()" id="btn-train-main" style="flex:1; background:linear-gradient(135deg, #4b55ff, #7c3aed); color:#fff; border:none; padding:14px; border-radius:8px; font-weight:800; font-size:14px; cursor:pointer; box-shadow:0 4px 20px rgba(75,85,255,0.4);">
+                        🧠 Tüm Telefon Verileriyle Modeli Eğit
+                    </button>
+                    <button onclick="uploadLocalTelemetry()" style="background:rgba(255,255,255,0.06); color:#e6e8f0; border:1px solid rgba(255,255,255,0.15); padding:14px 18px; border-radius:8px; font-weight:700; cursor:pointer; font-size:13px;">
+                        📤 Yerel Veriyi Pakete Çevir
+                    </button>
+                </div>
+
+                <div id="training-output-box" style="background:rgba(10,14,39,0.9); border:1px solid rgba(75,85,255,0.25); border-radius:8px; padding:14px; font-family:'Fira Code', monospace; font-size:12px; max-height:220px; overflow-y:auto; color:#a0a4b8;">
+                    <div>[00:00:00] Eğitim İstasyonu hazır. Veriler bekleniyor...</div>
+                </div>
+            </div>
+
+            <!-- Connected Android Nodes List -->
+            <div class="positions-container">
+                <h2>
+                    <span>📱 Katkıda Bulunan Android Telefonlar</span>
+                    <span id="nodes-count" style="font-size:12px; color:var(--accent-cyan);">1 Cihaz</span>
+                </h2>
+                <div id="nodes-list" class="positions-list" style="max-height:360px;">
+                    <div class="empty-state">Bağlı telefon aranıyor...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Learned Rules Table -->
+        <div class="history-container">
+            <h2>📜 Yapay Zekanın Öğrendiği Güncel Strateji Kuralları (Learned Rules)</h2>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Kural Adı</th>
+                            <th>Açıklama</th>
+                            <th>Yapay Zekanın Belirlediği Değer</th>
+                            <th>Etki Durumu</th>
+                        </tr>
+                    </thead>
+                    <tbody id="rules-body">
+                        <tr>
+                            <td><strong>L2 Alıcı Baskısı (OIR Min)</strong></td>
+                            <td>Long açılmadan önce tahtada bulunması gereken minimum alıcı baskısı</td>
+                            <td id="rule-oir" style="color:var(--green); font-weight:800;">+%15.0</td>
+                            <td><span class="badge badge-side long">AKTİF</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Minimum Alpha Skoru</strong></td>
+                            <td>4 faktörlü mikroyapı onay eşiği</td>
+                            <td id="rule-alpha" style="color:var(--accent-cyan); font-weight:800;">+10.0</td>
+                            <td><span class="badge badge-side long">AKTİF</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Dinamik Zirve Çekilme Toleransı</strong></td>
+                            <td>Tepe kârından geri çekilme toleransı</td>
+                            <td id="rule-trailing" style="color:#c084fc; font-weight:800;">%0.03</td>
+                            <td><span class="badge badge-side long">AKTİF</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function fetchTrainingStatus() {
+            try {
+                const res = await fetch('/api/training/status');
+                const data = await res.json();
+
+                document.getElementById('total-nodes').textContent = data.total_nodes_connected;
+                document.getElementById('total-trades').textContent = data.total_crowdsourced_trades;
+                document.getElementById('data-lake-files').textContent = `${data.data_lake_files_count} Telemetri Paketi`;
+
+                if (data.current_rules) {
+                    document.getElementById('model-winrate').textContent = `%${data.current_rules.win_rate_achieved}`;
+                    document.getElementById('model-version').textContent = `Örnek: ${data.current_rules.total_training_samples} İşlem`;
+                    document.getElementById('model-oir').textContent = `+${data.current_rules.optimal_long_oir_min * 100}%`;
+                    
+                    document.getElementById('rule-oir').textContent = `+${data.current_rules.optimal_long_oir_min * 100}%`;
+                    document.getElementById('rule-alpha').textContent = `+${data.current_rules.optimal_alpha_min}`;
+                }
+
+                // Render Nodes List
+                const nodesList = document.getElementById('nodes-list');
+                const nodes = data.nodes_list || [];
+                
+                // Add local node if empty
+                if (nodes.length === 0 && data.local_node_stats) {
+                    nodes.push({
+                        device_id: data.local_node_stats.device_id || 'Local_Station',
+                        trades_count: data.local_node_stats.total_trades_logged || 0,
+                        last_sync: 'Canlı Aktif'
+                    });
+                }
+
+                document.getElementById('nodes-count').textContent = `${nodes.length} Cihaz`;
+
+                nodesList.innerHTML = nodes.map(n => `
+                    <div class="position-card" style="margin-bottom:10px;">
+                        <div class="position-top-row">
+                            <div class="position-badges">
+                                <span class="position-symbol" style="font-size:15px;">📱 ${n.device_id}</span>
+                                <span class="badge badge-side long">CANLI DÜĞÜM</span>
+                            </div>
+                            <span class="badge-time">${n.last_sync}</span>
+                        </div>
+                        <div style="font-size:13px; color:var(--text-secondary); margin-top:6px;">
+                            Üretilen İşlem Sayısı: <strong style="color:var(--text-primary);">${n.trades_count}</strong>
+                        </div>
+                    </div>
+                `).join('');
+
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        async function startTraining() {
+            const btn = document.getElementById('btn-train-main');
+            const statusBadge = document.getElementById('train-status-badge');
+            const outBox = document.getElementById('training-output-box');
+
+            btn.disabled = true;
+            btn.textContent = '⏳ Model Eğitiliyor...';
+            statusBadge.textContent = 'Eğitiliyor';
+            statusBadge.style.color = '#f59e0b';
+
+            logOutput('🚀 Tüm telefon verileri taranıyor...');
+
+            try {
+                const res = await fetch('/api/training/start', { method: 'POST' });
+                const data = await res.json();
+
+                if (data.status === 'success') {
+                    logOutput(`✅ Eğitim Başarılı! Analiz Edilen İşlem: ${data.rules.total_training_samples}`);
+                    logOutput(`🎯 Yeni Kazanma Oranı: %${data.rules.win_rate_achieved}`);
+                    logOutput(`🎯 Optimal L2 OIR Eşiği: %${data.rules.optimal_long_oir_min * 100}`);
+                    logOutput(`💾 Kurallar güncellendi: edge_learned_rules.json`);
+                    statusBadge.textContent = 'Model Güncellendi';
+                    statusBadge.style.color = '#10b981';
+                } else {
+                    logOutput(`ℹ️ ${data.message || 'Yeterli veri bekleniyor'}`);
+                    statusBadge.textContent = 'Bekleniyor';
+                }
+                fetchTrainingStatus();
+            } catch (e) {
+                logOutput(`❌ Hata: ${e.message}`);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🧠 Tüm Telefon Verileriyle Modeli Eğit';
+            }
+        }
+
+        async function uploadLocalTelemetry() {
+            try {
+                const exportRes = await fetch('/api/telemetry/export');
+                const payload = await exportRes.json();
+                const uploadRes = await fetch('/api/telemetry/upload', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const res = await uploadRes.json();
+                logOutput(`📤 Yerel veri paketi ambarına kaydedildi (${payload.trades_count} işlem)`);
+                fetchTrainingStatus();
+            } catch (e) {
+                logOutput(`❌ Hata: ${e.message}`);
+            }
+        }
+
+        function logOutput(msg) {
+            const outBox = document.getElementById('training-output-box');
+            const time = new Date().toLocaleTimeString('tr-TR');
+            const div = document.createElement('div');
+            div.textContent = `[${time}] ${msg}`;
+            outBox.appendChild(div);
+            outBox.scrollTop = outBox.scrollHeight;
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchTrainingStatus();
+            setInterval(fetchTrainingStatus, 4000);
+        });
+    </script>
+</body>
+</html>

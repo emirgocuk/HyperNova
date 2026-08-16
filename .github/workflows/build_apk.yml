@@ -1,0 +1,54 @@
+name: Build Standalone HyperNova Android APK
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build-standalone-apk:
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Set up Java 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - name: Cache Buildozer & Android Dependencies
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.buildozer
+          ~/.android
+          android/.buildozer
+        key: ${{ runner.os }}-buildozer-${{ hashFiles('android/buildozer.spec') }}
+        restore-keys: |
+          ${{ runner.os }}-buildozer-
+
+    - name: Install Buildozer & System Build Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 cmake libffi-dev libssl-dev
+        pip install --upgrade pip
+        pip install --upgrade buildozer cython virtualenv
+
+    - name: Build Standalone APK with Buildozer
+      run: |
+        cd android
+        buildozer android debug
+
+    - name: Upload Standalone APK Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: HyperNova-Standalone-Android-APK
+        path: android/bin/*.apk

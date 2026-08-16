@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HyperNova 1000:1 Live Trading Dashboard</title>
+    <link rel="stylesheet" href="/static/style.css?v=2">
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <div class="logo-icon">🔥</div>
+                <div class="logo-text">
+                    <h1>HyperNova</h1>
+                    <p>1000:1 High-Frequency Profit Engine</p>
+                </div>
+            </div>
+            <div style="display:flex; align-items:center; gap:16px;">
+                <div style="display:flex; gap:8px; align-items:center;">
+                    <a href="/training" style="background:linear-gradient(135deg, #4b55ff, #7c3aed); color:#fff; text-decoration:none; padding:7px 14px; border-radius:8px; font-weight:700; font-size:12px; display:flex; align-items:center; gap:6px; box-shadow:0 2px 10px rgba(75,85,255,0.3);">
+                        <span>🧠</span> AI Eğitim Merkezi
+                    </a>
+                    <button onclick="syncTelemetryToHub()" id="btn-sync-telemetry" style="background:rgba(16,185,129,0.15); color:#10b981; border:1px solid rgba(16,185,129,0.4); padding:7px 12px; border-radius:8px; font-weight:700; font-size:12px; cursor:pointer; display:flex; align-items:center; gap:6px;">
+                        <span>📤</span> Veriyi Merkeze Yükle
+                    </button>
+                    <button onclick="configureHubServer()" title="Eğitim İstasyonu IP Ayarı" style="background:rgba(255,255,255,0.06); color:#a0a4b8; border:1px solid rgba(255,255,255,0.15); padding:7px 10px; border-radius:8px; font-size:12px; cursor:pointer;">
+                        ⚙️
+                    </button>
+                </div>
+                <div class="ticker">
+                    <div class="ticker-symbol" id="symbol">BTC</div>
+                    <div class="ticker-price" id="price">$0.00</div>
+                    <div class="ticker-status" id="status">Starting...</div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Portfolio Stats -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">💰 Bakiye (Balance)</div>
+                <div class="stat-value" id="balance">$10,000.00</div>
+                <div class="stat-change" id="leverage-badge">Kaldıraç: 1000:1</div>
+            </div>
+            <div class="stat-card highlight">
+                <div class="stat-label">📈 Toplam Varlık (Equity)</div>
+                <div class="stat-value" id="equity">$10,000.00</div>
+                <div class="stat-change" id="equity-change">+0.00%</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">💸 Açık Kâr/Zarar (Unrealized)</div>
+                <div class="stat-value" id="unrealized-pnl">$0.00</div>
+                <div class="stat-change" id="unrealized-change">0 Açık Pozisyon</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">🛡️ Teminat (Used / Free Margin)</div>
+                <div class="stat-value" id="used-margin">$0.00</div>
+                <div class="stat-change" id="free-margin">Serbest: $10,000.00</div>
+            </div>
+        </div>
+
+        <!-- L2 Orderbook Live Depth Imbalance Stream -->
+        <div class="l2-stream-card" style="background:var(--bg-card); backdrop-filter:blur(10px); border:1px solid var(--border-color); border-radius:12px; padding:14px 20px; margin-bottom:24px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+            <div style="font-size:13px; font-weight:700; color:var(--text-secondary); display:flex; align-items:center; gap:8px;">
+                <span>⚡ CANLI L2 TAHTA DERİNLİĞİ & BASKISI:</span>
+            </div>
+            <div id="l2-badges" style="display:flex; gap:14px; flex-wrap:wrap;">
+                <div id="l2-sol" style="background:rgba(10,14,39,0.7); padding:6px 14px; border-radius:8px; border:1px solid rgba(75,85,255,0.2); font-size:12px;">
+                    <strong>SOL:</strong> <span class="oir-val">Yükleniyor...</span>
+                </div>
+                <div id="l2-hype" style="background:rgba(10,14,39,0.7); padding:6px 14px; border-radius:8px; border:1px solid rgba(75,85,255,0.2); font-size:12px;">
+                    <strong>HYPE:</strong> <span class="oir-val">Yükleniyor...</span>
+                </div>
+                <div id="l2-btc" style="background:rgba(10,14,39,0.7); padding:6px 14px; border-radius:8px; border:1px solid rgba(75,85,255,0.2); font-size:12px;">
+                    <strong>BTC:</strong> <span class="oir-val">Yükleniyor...</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Chart & Positions Grid -->
+        <div class="main-grid">
+            <!-- P&L Chart -->
+            <div class="chart-container">
+                <h2>📊 Canlı Portföy Grafiği (Equity & Balance)</h2>
+                <canvas id="pnlChart"></canvas>
+            </div>
+
+            <!-- Open Positions -->
+            <div class="positions-container">
+                <h2>
+                    <span>🔓 Canlı Açık Pozisyonlar</span>
+                    <span id="positions-count-badge" style="font-size:12px; font-weight:600; color:var(--accent-cyan);">0 Aktif</span>
+                </h2>
+                <div id="positions-list" class="positions-list">
+                    <div class="empty-state">Henüz açık pozisyon yok</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Trade History -->
+        <div class="history-container">
+            <h2>📜 Tamamlanan İşlem Geçmişi (Realized History)</h2>
+            <div class="table-wrapper">
+                <table id="history-table">
+                    <thead>
+                        <tr>
+                            <th>Zaman</th>
+                            <th>İşlem</th>
+                            <th>Varlık</th>
+                            <th>Giriş Fiyatı</th>
+                            <th>Çıkış Fiyatı</th>
+                            <th>Net Kâr / Zarar</th>
+                        </tr>
+                    </thead>
+                    <tbody id="history-body">
+                        <tr>
+                            <td colspan="6" class="empty-state">Henüz kapanan işlem yok</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Activity Log -->
+        <div class="log-container">
+            <h2>📡 Canlı Sistem & Sinyal Akışı</h2>
+            <div id="log-content" class="log-content">
+                <div class="log-entry">[00:00:00] HyperNova 1000:1 Engine başlatıldı...</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/app.js?v=2"></script>
+</body>
+</html>
