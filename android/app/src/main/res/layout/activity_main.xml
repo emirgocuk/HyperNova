@@ -37,7 +37,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="7/24 Mobil Veri Toplayıcı & AI Motoru"
+                    android:text="7/24 Mobil Veri Toplayıcı ve AI Motoru"
                     android:textColor="@color/text_secondary"
                     android:textSize="12sp" />
             </LinearLayout>
@@ -192,7 +192,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginBottom="8dp"
-            android:text="📊 CANLI PİYASA DERİNLİĞİ & FONLAMA"
+            android:text="📊 CANLI PİYASA DERİNLİĞİ VE FONLAMA"
             android:textColor="@color/text_primary"
             android:textSize="14sp"
             android:textStyle="bold" />
