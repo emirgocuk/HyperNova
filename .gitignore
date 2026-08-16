@@ -47,13 +47,15 @@ eggs/
 .eggs/
 *.spec
 
-# --- 4. VIRTUAL ENVIRONMENTS ---
+# --- 4. VIRTUAL ENVIRONMENTS & JS DEPENDENCIES ---
 venv/
 .venv/
 env/
 ENV/
 env.bak/
 venv.bak/
+node_modules/
+.next/
 
 # --- 5. LOGS & DIAGNOSTICS ---
 *.log
