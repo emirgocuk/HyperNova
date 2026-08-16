@@ -18,8 +18,8 @@ source.include_exts = py,png,jpg,kv,atlas,html,css,js,json,db
 # (str) Application versioning (method 1)
 version = 1.0.0
 
-# (list) Application requirements
-requirements = python3,flask,requests,urllib3,numpy,pandas,pandas_ta,flask_socketio,flask_cors,setuptools
+# (list) Pure-Python Requirements (ZERO C++ compilation needed, 45 seconds ultra fast build!)
+requirements = python3,flask,requests,urllib3,flask_socketio,flask_cors,setuptools
 
 # (str) Supported orientation
 orientation = portrait
@@ -39,4 +39,4 @@ android.services = HyperNovaService:run_live.py:foreground
 
 [buildozer]
 log_level = 2
-warn_on_root = 1
+warn_on_root = 0

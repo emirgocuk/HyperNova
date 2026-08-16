@@ -1,5 +1,6 @@
 import sys
 import os
+import math
 
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
@@ -8,9 +9,7 @@ if hasattr(sys.stderr, 'reconfigure'):
 
 import time
 import requests
-import pandas as pd
-import pandas_ta as ta
-import numpy as np
+import json
 from datetime import datetime
 from termcolor import cprint
 import traceback
@@ -46,9 +45,55 @@ meta_context_cache = {}
 last_meta_fetch = 0
 
 
-def fetch_live_1m_candles(coin: str, limit: int = 40) -> pd.DataFrame:
+# =====================================================================
+# PURE PYTHON HIGH-PERFORMANCE INDICATORS (ZERO C++ COMPILATION NEEDED)
+# =====================================================================
+def calc_bollinger_bands(prices: list, length: int = 12, std_mult: float = 1.8):
+    if len(prices) < length:
+        p = prices[-1] if prices else 100.0
+        return p * 0.9985, p, p * 1.0015
+    subset = prices[-length:]
+    mean = sum(subset) / length
+    variance = sum((x - mean) ** 2 for x in subset) / length
+    std = math.sqrt(variance)
+    return mean - (std_mult * std), mean, mean + (std_mult * std)
+
+
+def calc_stoch_rsi(prices: list, length: int = 12, rsi_length: int = 12) -> float:
+    if len(prices) < (length + rsi_length):
+        return 50.0
+
+    gains = []
+    losses = []
+    for i in range(1, len(prices)):
+        diff = prices[i] - prices[i - 1]
+        gains.append(max(0.0, diff))
+        losses.append(max(0.0, -diff))
+
+    rsis = []
+    for i in range(rsi_length, len(gains) + 1):
+        avg_gain = sum(gains[i - rsi_length:i]) / rsi_length
+        avg_loss = sum(losses[i - rsi_length:i]) / rsi_length
+        if avg_loss == 0:
+            rsis.append(100.0)
+        else:
+            rs = avg_gain / avg_loss
+            rsis.append(100.0 - (100.0 / (1.0 + rs)))
+
+    if len(rsis) < length:
+        return 50.0
+
+    sub_rsis = rsis[-length:]
+    min_r, max_r = min(sub_rsis), max(sub_rsis)
+    if max_r == min_r:
+        return 50.0
+
+    return ((rsis[-1] - min_r) / (max_r - min_r)) * 100.0
+
+
+def fetch_live_1m_candles(coin: str, limit: int = 40) -> list:
     """
-    Fetches real-time 1-minute OHLCV candles from HyperLiquid.
+    Fetches real-time 1-minute close prices from HyperLiquid.
     """
     now = time.time()
     if coin in candles_cache and (now - last_candle_fetch.get(coin, 0)) < 0.8:
@@ -74,21 +119,14 @@ def fetch_live_1m_candles(coin: str, limit: int = 40) -> pd.DataFrame:
         candles = data if isinstance(data, list) else data.get('candles', [])
 
         if candles:
-            df = pd.DataFrame(candles)
-            df['t'] = pd.to_datetime(df['t'], unit='ms')
-            df.set_index('t', inplace=True)
-            df.rename(columns={'o': 'Open', 'h': 'High', 'l': 'Low', 'c': 'Close', 'v': 'Volume'}, inplace=True)
-            for col in ['Open', 'High', 'Low', 'Close', 'Volume']:
-                df[col] = df[col].astype(float)
-            df.sort_index(inplace=True)
-
-            candles_cache[coin] = df.tail(limit)
+            close_prices = [float(c['c']) for c in candles]
+            candles_cache[coin] = close_prices[-limit:]
             last_candle_fetch[coin] = now
             return candles_cache[coin]
     except Exception:
         pass
 
-    return candles_cache.get(coin, pd.DataFrame())
+    return candles_cache.get(coin, [])
 
 
 def fetch_all_meta_contexts() -> dict:
@@ -167,11 +205,10 @@ def fetch_full_microstructure(coin: str) -> dict:
     funding_apr = meta.get('funding_apr', 0.0)
     basis_pct = meta.get('basis_pct', 0.0)
 
-    # 3. Calculate Composite Alpha Score [-100 (Strong Bear) to +100 (Strong Bull)]
-    # OIR contributes 60 points, Basis contributes 25 points, Funding Bias contributes 15 points
+    # 3. Calculate Composite Alpha Score [-100 to +100]
     oir_score = oir * 60.0
-    basis_score = np.clip(basis_pct * 1000.0, -25.0, 25.0)
-    funding_bias = -np.clip(funding_apr / 2.0, -15.0, 15.0)  # Extreme positive funding means Longs overleveraged -> Short bias
+    basis_score = max(-25.0, min(25.0, basis_pct * 1000.0))
+    funding_bias = -max(-15.0, min(15.0, funding_apr / 2.0))
     composite_alpha = oir_score + basis_score + funding_bias
 
     res = {
@@ -211,24 +248,19 @@ def run_full_microstructure_quant_engine():
 
         for coin in SYMBOLS:
             try:
-                df = fetch_live_1m_candles(coin, limit=40)
+                prices = fetch_live_1m_candles(coin, limit=40)
                 micro = fetch_full_microstructure(coin)
                 web_dashboard.update_microstructure(coin, micro)
 
-                if df.empty or len(df) < 15:
+                if not prices or len(prices) < 15:
                     continue
 
-                current_price = float(df['Close'].iloc[-1])
+                current_price = float(prices[-1])
                 current_prices[coin] = current_price
 
-                # Fast 1m Oscillators
-                bb = ta.bbands(df['Close'], length=12, std=1.8)
-                stoch_rsi = ta.stochrsi(df['Close'], length=12, rsi_length=12, k=3, d=3)
-
-                bbl = float(bb.iloc[-1, 0]) if bb is not None else current_price * 0.9985
-                bbm = float(bb.iloc[-1, 1]) if bb is not None else current_price
-                bbu = float(bb.iloc[-1, 2]) if bb is not None else current_price * 1.0015
-                stoch_k = float(stoch_rsi.iloc[-1, 0]) if stoch_rsi is not None else 50.0
+                # Pure Python Fast Indicators
+                bbl, bbm, bbu = calc_bollinger_bands(prices, length=12, std_mult=1.8)
+                stoch_k = calc_stoch_rsi(prices, length=12, rsi_length=12)
 
                 alpha_score = micro.get('composite_alpha', 0.0)
                 oir_pct = micro.get('oir_pct', 0.0)
@@ -251,13 +283,13 @@ def run_full_microstructure_quant_engine():
 
                 # LONG: Dip/Aşırı Satım + Güçlü Alıcı Baskısı (Alpha > 0)
                 if (current_price <= bbl or stoch_k < 26):
-                    if alpha_score >= -10.0:  # Tahtada ve fonlamada ağır bir çöküş baskısı yoksa
+                    if alpha_score >= -10.0:
                         signal = "LONG"
                         reason_str = f"Dip + Alpha:{alpha_score:+.0f} (OIR:{oir_pct:+.0f}% | Fund:{funding:.1f}%)"
 
                 # SHORT: Tepe/Aşırı Alım + Satıcı Baskısı (Alpha < 0)
                 elif (current_price >= bbu or stoch_k > 74):
-                    if alpha_score <= 10.0:   # Tahtada aşırı bir alım duvarı yoksa
+                    if alpha_score <= 10.0:
                         signal = "SHORT"
                         reason_str = f"Tepe + Alpha:{alpha_score:+.0f} (OIR:{oir_pct:+.0f}% | Fund:{funding:.1f}%)"
 
@@ -395,9 +427,6 @@ def run_full_microstructure_quant_engine():
         # -----------------------------------------------------
         if current_prices and loop_count % 3 == 0:
             stats = paper_account.get_portfolio_status(current_prices)
-            pnl_color = "green" if stats['unrealized_pnl'] >= 0 else "red"
-            equity_color = "green" if stats['equity'] >= paper_account.start_balance else "red"
-
             print(f"\r⚡ Bakiye: ${stats['balance']:.2f} | Varlık: ${stats['equity']:.2f} | Kâr: ${stats['unrealized_pnl']:+.2f} | Teminat: ${stats['used_margin']:.2f} | Poz: {stats['open_positions']}", end="", flush=True)
 
         time.sleep(0.7)
