@@ -14,44 +14,30 @@ import androidx.core.app.NotificationCompat;
 
 public class HyperNovaService extends Service {
 
-    private static final String CHANNEL_ID = "HyperNova_Trading_Service";
-    private static final int NOTIFICATION_ID = 1001;
+    private static final String CHANNEL_ID = "HyperNova_Telemetry_Channel";
+    private static final int NOTIFICATION_ID = 2026;
     private PowerManager.WakeLock wakeLock;
-    private boolean isRunning = false;
+    private MarketDataCollector collector;
 
     @Override
     public void onCreate() {
         super.onCreate();
         createNotificationChannel();
 
-        // 1. Acquire WakeLock (Keeps CPU running 7/24 even with screen locked)
+        // 1. Acquire WakeLock (Keeps CPU running 7/24 even with screen off)
         PowerManager powerManager = (PowerManager) getSystemService(Context.POWER_SERVICE);
         if (powerManager != null) {
-            wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "HyperNova::TradingEngineWakeLock");
+            wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "HyperNova::TelemetryWakeLock");
             wakeLock.acquire();
         }
 
-        // 2. Start Foreground Service with Sticky Notification
-        Notification notification = buildNotification("🔥 HyperNova 1000:1 Motoru 7/24 Aktif");
+        // 2. Start Foreground Notification
+        Notification notification = buildNotification("7/24 Kesintisiz Veri Toplama Aktif...");
         startForeground(NOTIFICATION_ID, notification);
 
-        // 3. Start Python Engine in Background Thread
-        startTradingEngine();
-    }
-
-    private void startTradingEngine() {
-        if (isRunning) return;
-        isRunning = true;
-
-        new Thread(() -> {
-            try {
-                // Embedded Python Initialization & Execution
-                // On Android, Chaquopy / Embedded CPython runs run_live.py here
-                System.out.println("⚡ HyperNova Python 7/24 Engine Android'de Başlatıldı!");
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }).start();
+        // 3. Start Native Background Telemetry Engine
+        collector = MarketDataCollector.getInstance(this);
+        collector.start();
     }
 
     private Notification buildNotification(String text) {
@@ -62,9 +48,9 @@ public class HyperNovaService extends Service {
         );
 
         return new NotificationCompat.Builder(this, CHANNEL_ID)
-                .setContentTitle("HyperNova Profit Engine")
+                .setContentTitle("⚡ HyperNova 7/24 Veri Toplayıcı")
                 .setContentText(text)
-                .setSmallIcon(android.R.drawable.stat_notify_sync)
+                .setSmallIcon(R.drawable.ic_launcher_foreground)
                 .setContentIntent(pendingIntent)
                 .setOngoing(true)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
@@ -75,10 +61,10 @@ public class HyperNovaService extends Service {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(
                     CHANNEL_ID,
-                    "HyperNova Trading Service",
+                    "HyperNova 7/24 Telemetry Service",
                     NotificationManager.IMPORTANCE_LOW
             );
-            channel.setDescription("7/24 Kesintisiz Algoritmik Ticaret ve Veri Toplama");
+            channel.setDescription("7/24 Kesintisiz L2 Derinlik, Fonlama ve İşlem Verisi Toplayıcı");
             NotificationManager manager = getSystemService(NotificationManager.class);
             if (manager != null) {
                 manager.createNotificationChannel(channel);
@@ -88,13 +74,15 @@ public class HyperNovaService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        return START_STICKY; // Auto-restart if killed by OS
+        return START_STICKY;
     }
 
     @Override
     public void onDestroy() {
         super.onDestroy();
-        isRunning = false;
+        if (collector != null) {
+            collector.stop();
+        }
         if (wakeLock != null && wakeLock.isHeld()) {
             wakeLock.release();
         }

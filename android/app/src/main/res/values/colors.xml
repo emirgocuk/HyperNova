@@ -1,6 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="primary">#0a0e27</color>
-    <color name="background">#050814</color>
-    <color name="accent">#00f0ff</color>
+    <color name="primary_dark">#050814</color>
+    <color name="card_bg">#0d1330</color>
+    <color name="card_border">#1e295d</color>
+    <color name="neon_cyan">#00f0ff</color>
+    <color name="neon_green">#00ff88</color>
+    <color name="neon_red">#ff3366</color>
+    <color name="neon_gold">#ffd700</color>
+    <color name="text_primary">#ffffff</color>
+    <color name="text_secondary">#8c9fc2</color>
+    <color name="console_bg">#03050c</color>
+    <color name="console_text">#00ff88</color>
 </resources>
