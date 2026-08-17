@@ -7,7 +7,7 @@
     "earnings_impact": 0,
     "investor_confidence": 3,
     "risk_profile_change": 0,
-    "last_updated": 1786990516.9560742,
+    "last_updated": 1786996352.8126266,
     "source": "heuristic_quant"
   },
   "ETH": {
@@ -18,7 +18,7 @@
     "earnings_impact": 0,
     "investor_confidence": -3,
     "risk_profile_change": -2,
-    "last_updated": 1786990516.95665,
+    "last_updated": 1786996352.813092,
     "source": "heuristic_quant"
   }
 }

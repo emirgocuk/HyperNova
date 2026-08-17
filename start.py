@@ -12,12 +12,12 @@ def main():
     frontend_dir = os.path.join(root_dir, "frontend")
 
     print("=================================================================")
-    print("      >>> HYPERNOVA: 1000:1 UNIFIED PROFIT & AI ENGINE <<<       ")
+    print("       >>> HYPERNOVA: 200X UNIFIED PROFIT & AI ENGINE <<<        ")
     print("=================================================================")
 
     try:
-        # Start Unified Backend (FastAPI + Async 1000:1 Scalper Engine + WebSockets)
-        print("\n[1/2] Launching HyperNova Unified Backend (FastAPI + Primo DRL + WebSocket Engine)...")
+        # Start Unified Backend (FastAPI + Async 200:1 Scalper Engine + WebSockets)
+        print("\n[1/2] Launching HyperNova Unified Backend (FastAPI + Primo DRL + MEXC 200x Engine)...")
         subprocess.Popen(
             f'start "HyperNova Backend (Port 8000)" cmd /k "cd /d {hypernova_dir} && title HyperNova Backend && python control_tower\\unified_api.py"', 
             shell=True

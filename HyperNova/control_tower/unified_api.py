@@ -17,6 +17,7 @@ if hasattr(sys.stderr, 'reconfigure'):
 
 import requests
 import numpy as np
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -43,11 +44,21 @@ primo_telemetry_cache: Dict[str, Any] = {}
 logger = logging.getLogger("HyperNovaUnified")
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
+
+# Modern FastAPI Lifespan Handler (Replaces deprecated @app.on_event)
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    worker_task = asyncio.create_task(scalper_worker_loop())
+    yield
+    worker_task.cancel()
+
+
 # FastAPI App
 app = FastAPI(
     title="HyperNova 1000:1 Unified Engine API",
     description="High-Frequency Microstructure Scalper, AI Training Hub & Mobile Telemetry Gateway",
-    version="3.0.0"
+    version="3.0.0",
+    lifespan=lifespan
 )
 
 app.add_middleware(
@@ -63,18 +74,29 @@ app.add_middleware(
 # =====================================================================
 class EngineSettings(BaseModel):
     symbols: List[str] = ["SOL", "HYPE", "BTC"]
-    leverage: float = 1000.0
+    leverage: float = 200.0          # Max 200x Leverage (Institutional / MEXC standard)
     max_positions: int = 3
-    lot_size_usd_notional: float = 800.0
-    base_profit_trigger: float = 0.0004
-    fast_sl_pct: float = 0.0025
-    stagnant_timeout_seconds: int = 150
-    is_live_trading: bool = False  # False = Paper, True = Live CEX/Hyperliquid
+    lot_size_usd_notional: float = 800.0  # $800 Notional uses $4.00 Margin at 200x
+    base_profit_trigger: float = 0.0012   # +0.12% Fiyat Hareketi = +$0.96 (3x Round-Trip Komisyon Eşiği!)
+    fast_sl_pct: float = 0.0035           # -0.35% Stop-Loss (Gürültüye takılmaz)
+    stagnant_timeout_seconds: int = 360   # 6 Dakika sabır (Erken komisyon yakmayı engeller)
+    exchange_preset: str = "MEXC"         # MEXC, HYPERLIQUID, BINANCE, ZERO_FEE
+    maker_fee_pct: float = 0.0000         # 0.00% MEXC Maker
+    taker_fee_pct: float = 0.0002         # 0.02% MEXC Taker ($0.16 per $800 order)
+    slippage_pct: float = 0.0001          # 0.01% Realistic Execution Slippage
+    is_live_trading: bool = False         # False = Paper, True = Live CEX/Hyperliquid
 
 config = EngineSettings()
 
 data_logger = TradeDataLogger()
-paper_account = PaperAccount(start_balance=10000.0, leverage=config.leverage)
+paper_account = PaperAccount(
+    start_balance=10000.0,
+    leverage=config.leverage,
+    exchange_preset=config.exchange_preset,
+    maker_fee_pct=config.maker_fee_pct,
+    taker_fee_pct=config.taker_fee_pct,
+    slippage_pct=config.slippage_pct
+)
 
 # Fast Caches
 candles_cache: Dict[str, list] = {}
@@ -379,17 +401,17 @@ async def scalper_worker_loop():
                             basis_pct=basis_pct, composite_alpha=alpha_score
                         )
 
-                    # Signal generation (Hybrid PPO Continuous Action + L2 Micro Alpha Gate)
+                    # Signal generation (Sniper Mode: High Conviction PPO + L2 Micro Alpha Gate)
                     signal = None
                     reason_str = ""
-                    if (action_scalar >= 0.25 or (current_price <= bbl and rsi_14 < 32)) and alpha_score >= -10.0:
+                    if (action_scalar >= 0.40 or (current_price <= bbl and rsi_14 < 30)) and alpha_score >= 12.0:
                         signal = "LONG"
                         reason_str = f"PPO {action_meta['action_label']} ({action_scalar:+.2f}) + Alpha:{alpha_score:+.0f} (RSI:{rsi_14:.0f} | OIR:{oir_pct:+.0f}%)"
-                    elif (action_scalar <= -0.25 or (current_price >= bbu and rsi_14 > 68)) and alpha_score <= 10.0:
+                    elif (action_scalar <= -0.40 or (current_price >= bbu and rsi_14 > 70)) and alpha_score <= -12.0:
                         signal = "SHORT"
                         reason_str = f"PPO {action_meta['action_label']} ({action_scalar:+.2f}) + Alpha:{alpha_score:+.0f} (RSI:{rsi_14:.0f} | OIR:{oir_pct:+.0f}%)"
 
-                    # 1. Exit & Trailing Management
+                    # 1. Exit & Trailing Management (Commission-Killer & Wave Rider)
                     open_positions = [p for p in paper_account.positions if p['symbol'] == coin]
                     for pos in list(open_positions):
                         entry_price = pos['entry_price']
@@ -417,33 +439,38 @@ async def scalper_worker_loop():
                         should_close = False
                         exit_reason = ""
 
-                        # Exhaustion Exit
-                        if roe_pct >= 40.0:
-                            if side == 'LONG' and (current_price >= bbu * 0.9997 or rsi_14 >= 80 or alpha_score < -30):
+                        # 1. Exhaustion Take Profit (+60% ROE or indicator extremes)
+                        if roe_pct >= 30.0:
+                            if side == 'LONG' and (current_price >= bbu * 0.9997 or rsi_14 >= 82 or alpha_score < -35):
                                 should_close = True
                                 exit_reason = f"🎯 TEPE TÜKENİŞ KÂR KİLİT (+${pnl_usd:.2f} / +{roe_pct:.1f}% ROE | Alpha:{alpha_score:+.0f})"
-                            elif side == 'SHORT' and (current_price <= bbl * 1.0003 or rsi_14 <= 20 or alpha_score > 30):
+                            elif side == 'SHORT' and (current_price <= bbl * 1.0003 or rsi_14 <= 18 or alpha_score > 35):
                                 should_close = True
                                 exit_reason = f"🎯 DİP TÜKENİŞ KÂR KİLİT (+${pnl_usd:.2f} / +{roe_pct:.1f}% ROE | Alpha:{alpha_score:+.0f})"
 
-                        # Dynamic Trailing
+                        # 2. Dynamic Trailing (Waves >= +0.12% / +24% ROE)
                         if not should_close and pos['peak_pnl_pct'] >= config.base_profit_trigger:
-                            tol = 0.00005 if pos['peak_pnl_pct'] >= 0.0008 else (0.00009 if pos['peak_pnl_pct'] >= 0.0005 else 0.00015)
+                            tol = 0.00030 if pos['peak_pnl_pct'] >= 0.0030 else (0.00020 if pos['peak_pnl_pct'] >= 0.0018 else 0.00015)
                             if pnl_pct <= (pos['peak_pnl_pct'] - tol):
                                 should_close = True
-                                exit_reason = f"🚀 SIKI İZ SÜREN TEPE KÂRI (+${pnl_usd:.2f} / +{roe_pct:.1f}% ROE)"
+                                exit_reason = f"🚀 SIKI İZ SÜREN DALGA KÂRI (+${pnl_usd:.2f} / +{roe_pct:.1f}% ROE)"
 
-                        # Signal Flip
+                        # 3. Komisyon Koruma Kalkanı (Break-Even + Fees: +0.08% ulaşıldıktan sonra asla zarara düşmez)
+                        elif not should_close and pos['peak_pnl_pct'] >= 0.0008 and pnl_pct <= 0.00045:
+                            should_close = True
+                            exit_reason = f"🛡️ KOMİSYON KORUMA KALKANI (+${pnl_usd:.2f} / Komisyon Kurtarıldı)"
+
+                        # 4. Signal Flip (Only on strong opposite signal)
                         elif not should_close and signal and signal != side:
                             should_close = True
                             exit_reason = f"🔄 TERS SİNYAL DÖNÜŞÜ ({side} -> {signal})"
 
-                        # Stagnant Exit
-                        elif not should_close and dur_secs >= config.stagnant_timeout_seconds and pnl_pct < 0.0003:
+                        # 5. Stagnant Exit (6 Dakika sonra hâlâ ölü ise)
+                        elif not should_close and dur_secs >= config.stagnant_timeout_seconds and pnl_pct < 0.0004:
                             should_close = True
                             exit_reason = f"⏱️ YATAY/ÖLÜ POZİSYON ÇIKIŞI ({pnl_pct*100:+.2f}%)"
 
-                        # Hard Stop Loss
+                        # 6. Hard Stop Loss
                         elif not should_close and pnl_pct <= -config.fast_sl_pct:
                             should_close = True
                             exit_reason = f"🛑 Sıkı Stop-Loss ({pnl_pct*100:.2f}%)"
@@ -483,7 +510,7 @@ async def scalper_worker_loop():
                         if executed:
                             for p in paper_account.positions:
                                 if p['symbol'] == coin:
-                                    p['entry_stoch_k'] = stoch_k
+                                    p['entry_stoch_k'] = rsi_14
                                     p['entry_oir'] = oir_pct / 100.0
                                     p['entry_alpha'] = alpha_score
 
@@ -509,11 +536,6 @@ async def scalper_worker_loop():
             logger.error(f"Engine Loop Error: {e}")
 
         await asyncio.sleep(0.8)
-
-
-@app.on_event("startup")
-async def startup_event():
-    asyncio.create_task(scalper_worker_loop())
 
 
 # =====================================================================
@@ -549,7 +571,7 @@ async def websocket_live_endpoint(websocket: WebSocket):
 @app.get("/api/v1/status")
 def get_system_status():
     stats = paper_account.get_portfolio_status(current_prices)
-    total_realized_pnl = sum(t.get('pnl', 0) for t in paper_account.trade_history)
+    total_realized_pnl = sum(t.get('net_pnl', t.get('pnl', 0)) for t in paper_account.trade_history)
 
     return {
         "status": "ONLINE" if is_engine_running else "PAUSED",
@@ -558,7 +580,14 @@ def get_system_status():
         "balance": stats['balance'],
         "equity": stats['equity'],
         "unrealized_pnl": stats['unrealized_pnl'],
+        "unrealized_gross_pnl": stats.get('unrealized_gross_pnl', stats['unrealized_pnl']),
         "realized_pnl": round(total_realized_pnl, 2),
+        "total_fees_paid": stats.get('total_fees_paid', 0.0),
+        "total_slippage_cost": stats.get('total_slippage_cost', 0.0),
+        "exchange_preset": stats.get('exchange_preset', 'MEXC'),
+        "maker_fee_pct": stats.get('maker_fee_pct', 0.0),
+        "taker_fee_pct": stats.get('taker_fee_pct', 0.02),
+        "slippage_pct": stats.get('slippage_pct', 0.01),
         "used_margin": stats.get('used_margin', 0.0),
         "free_margin": stats.get('free_margin', stats['equity']),
         "margin_level_pct": stats.get('margin_level_pct', 9999.0),
@@ -722,7 +751,7 @@ def panic_close_all():
 
 @app.get("/api/v1/config")
 def get_config():
-    return config.dict()
+    return config.model_dump() if hasattr(config, "model_dump") else config.dict()
 
 
 @app.post("/api/v1/config")
@@ -730,8 +759,14 @@ def update_config(new_cfg: EngineSettings):
     global config
     config = new_cfg
     paper_account.leverage = config.leverage
-    add_log(f"⚙️ Konfigürasyon Güncellendi: Kaldıraç={config.leverage}x, Lot=${config.lot_size_usd_notional}", "CONFIG")
-    return {"status": "success", "config": config.dict()}
+    if config.exchange_preset:
+        paper_account.set_exchange_preset(config.exchange_preset)
+    paper_account.maker_fee_pct = config.maker_fee_pct
+    paper_account.taker_fee_pct = config.taker_fee_pct
+    paper_account.slippage_pct = config.slippage_pct
+    add_log(f"⚙️ Borsa & Konfigürasyon Güncellendi: Borsa={config.exchange_preset}, Kaldıraç={config.leverage}x, Taker Fee=%{config.taker_fee_pct*100:.3f}", "CONFIG")
+    cfg_data = config.model_dump() if hasattr(config, "model_dump") else config.dict()
+    return {"status": "success", "config": cfg_data}
 
 
 @app.get("/api/v1/logs")

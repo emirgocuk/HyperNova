@@ -57,7 +57,14 @@ type SystemStatus = {
   balance: number;
   equity: number;
   unrealized_pnl: number;
+  unrealized_gross_pnl?: number;
   realized_pnl: number;
+  total_fees_paid?: number;
+  total_slippage_cost?: number;
+  exchange_preset?: string;
+  maker_fee_pct?: number;
+  taker_fee_pct?: number;
+  slippage_pct?: number;
   used_margin: number;
   free_margin: number;
   margin_level_pct: number;
@@ -65,6 +72,7 @@ type SystemStatus = {
   open_positions: number;
   prices: Record<string, number>;
   microstructure: Record<string, Microstructure>;
+  primo?: Record<string, any>;
   device_id?: string;
   timestamp?: string;
 };
@@ -97,10 +105,28 @@ type EngineConfig = {
   is_live_trading: boolean;
 };
 
+type TradeHistoryItem = {
+  action: string;
+  symbol: string;
+  side: "LONG" | "SHORT";
+  pnl: number;
+  net_pnl?: number;
+  gross_pnl?: number;
+  entry_fee?: number;
+  exit_fee?: number;
+  total_fees?: number;
+  entry_price: number;
+  exit_price: number;
+  size: number;
+  exchange?: string;
+  time: string;
+};
+
 export default function HyperNovaApp() {
   const [activeTab, setActiveTab] = useState<"scalper" | "ai" | "settings">("scalper");
   const [status, setStatus] = useState<SystemStatus | null>(null);
   const [positions, setPositions] = useState<Position[]>([]);
+  const [history, setHistory] = useState<TradeHistoryItem[]>([]);
   const [trainingStatus, setTrainingStatus] = useState<TrainingStatus | null>(null);
   const [logs, setLogs] = useState<LogMessage[]>([]);
   const [config, setConfig] = useState<EngineConfig | null>(null);
@@ -109,7 +135,7 @@ export default function HyperNovaApp() {
   const [trainingMsg, setTrainingMsg] = useState<string | null>(null);
 
   const wsRef = useRef<WebSocket | null>(null);
-  const terminalEndRef = useRef<HTMLDivElement | null>(null);
+  const terminalContainerRef = useRef<HTMLDivElement | null>(null);
 
   const API_BASE = typeof window !== "undefined" && window.location.hostname !== "localhost" 
     ? `http://${window.location.hostname}:8000` 
@@ -119,23 +145,27 @@ export default function HyperNovaApp() {
     ? `ws://${window.location.hostname}:8000/ws/live` 
     : "ws://localhost:8000/ws/live";
 
-  // Auto scroll terminal
+  // Auto scroll ONLY the internal terminal box, never the webpage window
   useEffect(() => {
-    terminalEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (terminalContainerRef.current) {
+      terminalContainerRef.current.scrollTop = terminalContainerRef.current.scrollHeight;
+    }
   }, [logs]);
 
   // Fetch initial REST data
   const refreshData = useCallback(async () => {
     try {
-      const [sRes, pRes, tRes, cRes] = await Promise.all([
+      const [sRes, pRes, hRes, tRes, cRes] = await Promise.all([
         fetch(`${API_BASE}/api/v1/status`),
         fetch(`${API_BASE}/api/v1/positions`),
+        fetch(`${API_BASE}/api/v1/history`),
         fetch(`${API_BASE}/api/v1/training/status`),
         fetch(`${API_BASE}/api/v1/config`)
       ]);
 
       if (sRes.ok) setStatus(await sRes.json());
       if (pRes.ok) setPositions(await pRes.json());
+      if (hRes.ok) setHistory(await hRes.json());
       if (tRes.ok) setTrainingStatus(await tRes.json());
       if (cRes.ok) setConfig(await cRes.json());
     } catch (err) {
@@ -369,13 +399,29 @@ export default function HyperNovaApp() {
         {activeTab === "scalper" && (
           <div className="space-y-6">
             
+            {/* Real-World Exchange Friction Banner */}
+            <div className="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-950/40 via-slate-900 to-slate-900 border border-emerald-500/30 flex flex-wrap items-center justify-between gap-4 text-xs">
+              <div className="flex items-center gap-3">
+                <span className="font-black px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 uppercase tracking-wide">
+                  🏛️ {status?.exchange_preset || "MEXC"} Vadeli Modeli
+                </span>
+                <span className="text-slate-300">
+                  Maker: <b className="text-emerald-400">%{status?.maker_fee_pct ?? 0.00}</b> | Taker: <b className="text-amber-400">%{status?.taker_fee_pct ?? 0.02}</b> | Kayma (Slippage): <b className="text-cyan-400">%{status?.slippage_pct ?? 0.01}</b>
+                </span>
+              </div>
+              <div className="flex items-center gap-4 text-slate-400">
+                <span>Ödenen Borsa Komisyonu: <b className="text-rose-400 font-bold">${(status?.total_fees_paid ?? 0).toFixed(2)}</b></span>
+                <span>Net Kâr (Komisyon Sonrası): <b className={`font-bold ${(status?.realized_pnl ?? 0) >= 0 ? "text-emerald-400" : "text-rose-400"}`}>${(status?.realized_pnl ?? 0).toFixed(2)}</b></span>
+              </div>
+            </div>
+
             {/* Portfolio Summary Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               
               {/* Balance */}
               <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800 shadow-lg">
                 <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
-                  <span>💰 Toplam Bakiye (Balance)</span>
+                  <span>💰 Net Bakiye (Balance)</span>
                   <span className="text-[11px] font-bold text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded border border-rose-500/20">
                     {status?.leverage || 1000}:1
                   </span>
@@ -384,7 +430,7 @@ export default function HyperNovaApp() {
                   ${(status?.balance ?? 10000).toLocaleString("en-US", { minimumFractionDigits: 2 })}
                 </div>
                 <div className="text-xs text-slate-500 mt-1">
-                  Kullanılabilir Bakiye
+                  Komisyonlar Anlık Düşülür
                 </div>
               </div>
 
@@ -398,14 +444,14 @@ export default function HyperNovaApp() {
                   ${(status?.equity ?? 10000).toLocaleString("en-US", { minimumFractionDigits: 2 })}
                 </div>
                 <div className="text-xs font-semibold text-indigo-400 mt-1">
-                  Kâr/Zarar Dahil Gerçekleşen
+                  Net Kâr/Zarar Yansıtılmış
                 </div>
               </div>
 
               {/* Unrealized PnL */}
               <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800 shadow-lg">
                 <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
-                  <span>💸 Açık Kâr/Zarar</span>
+                  <span>💸 Açık Net Kâr/Zarar</span>
                   <span className="text-xs text-slate-400">{positions.length} Açık Poz</span>
                 </div>
                 <div className={`text-2xl font-black ${
@@ -414,7 +460,7 @@ export default function HyperNovaApp() {
                   {(status?.unrealized_pnl ?? 0) >= 0 ? "+" : ""}${(status?.unrealized_pnl ?? 0).toFixed(2)}
                 </div>
                 <div className="text-xs text-slate-500 mt-1">
-                  Gerçekleşmiş: ${(status?.realized_pnl ?? 0).toFixed(2)}
+                  Brüt: ${(status?.unrealized_gross_pnl ?? status?.unrealized_pnl ?? 0).toFixed(2)}
                 </div>
               </div>
 
@@ -586,7 +632,7 @@ export default function HyperNovaApp() {
                 </div>
                 <span className="text-[11px] text-slate-500 font-mono">WebSocket Stream</span>
               </div>
-              <div className="h-44 bg-slate-950 rounded-xl p-3 font-mono text-xs overflow-y-auto space-y-1.5 border border-slate-900">
+              <div ref={terminalContainerRef} className="h-40 bg-slate-950 rounded-xl p-3 font-mono text-xs overflow-y-auto space-y-1.5 border border-slate-900">
                 {logs.length === 0 ? (
                   <div className="text-slate-600 italic">Sistem mesajları bekleniyor...</div>
                 ) : (
@@ -605,8 +651,94 @@ export default function HyperNovaApp() {
                     </div>
                   ))
                 )}
-                <div ref={terminalEndRef} />
               </div>
+            </div>
+
+            {/* ========================================================= */}
+            {/* PAST TRADES HISTORY TABLE */}
+            {/* ========================================================= */}
+            <div className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800/90 shadow-xl space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-800">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">📜</span>
+                  <span className="text-sm font-black text-white uppercase tracking-wider">Geçmiş İşlemler & Kâr/Zarar Dökümü</span>
+                  <span className="text-xs text-slate-500 font-mono">({history.length} İşlem)</span>
+                </div>
+                <div className="flex items-center gap-3 text-xs">
+                  <span className="text-slate-400">
+                    Kazanan: <b className="text-emerald-400">{history.filter(h => (h.net_pnl ?? h.pnl) > 0).length}</b>
+                  </span>
+                  <span className="text-slate-400">
+                    Kaybeden: <b className="text-rose-400">{history.filter(h => (h.net_pnl ?? h.pnl) < 0).length}</b>
+                  </span>
+                  <span className="text-slate-400">
+                    Kazanma Oranı: <b className="text-amber-400 font-bold">
+                      {history.length > 0 
+                        ? ((history.filter(h => (h.net_pnl ?? h.pnl) > 0).length / history.length) * 100).toFixed(1) 
+                        : "0.0"}%
+                    </b>
+                  </span>
+                </div>
+              </div>
+
+              {history.length === 0 ? (
+                <div className="text-center py-10 text-slate-500 text-xs">
+                  Henüz tamamlanmış geçmiş işlem kaydı bulunmuyor.
+                </div>
+              ) : (
+                <div className="overflow-x-auto max-h-80 overflow-y-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="sticky top-0 bg-slate-900 border-b border-slate-800 text-slate-400">
+                      <tr>
+                        <th className="py-2.5 px-3">Tarih / Saat</th>
+                        <th className="py-2.5 px-3">Varlık</th>
+                        <th className="py-2.5 px-3">Yön</th>
+                        <th className="py-2.5 px-3">Giriş ➔ Çıkış Fiyatı</th>
+                        <th className="py-2.5 px-3">Komisyon</th>
+                        <th className="py-2.5 px-3 font-right">Net Kâr/Zarar</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/50 font-mono">
+                      {history.map((t, idx) => {
+                        const netPnl = t.net_pnl ?? t.pnl ?? 0;
+                        const isWin = netPnl >= 0;
+                        const formattedTime = t.time ? t.time.replace("T", " ").substring(0, 19) : "-";
+
+                        return (
+                          <tr key={idx} className="hover:bg-slate-800/40 transition-colors">
+                            <td className="py-2.5 px-3 text-slate-400 text-[11px] whitespace-nowrap">
+                              {formattedTime}
+                            </td>
+                            <td className="py-2.5 px-3 font-bold text-white">
+                              {t.symbol}
+                            </td>
+                            <td className="py-2.5 px-3">
+                              <span className={`px-2 py-0.5 rounded font-extrabold text-[10px] ${
+                                t.side === "LONG"
+                                  ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                                  : "bg-rose-500/20 text-rose-400 border border-rose-500/30"
+                              }`}>
+                                {t.side}
+                              </span>
+                            </td>
+                            <td className="py-2.5 px-3 text-slate-300">
+                              ${t.entry_price ? t.entry_price.toFixed(4) : "0"} ➔ ${t.exit_price ? t.exit_price.toFixed(4) : "0"}
+                            </td>
+                            <td className="py-2.5 px-3 text-slate-400 text-[11px]">
+                              {t.total_fees !== undefined ? `$${t.total_fees.toFixed(3)}` : (t.exit_fee ? `$${(t.exit_fee * 2).toFixed(3)}` : "$0.32")}
+                            </td>
+                            <td className={`py-2.5 px-3 font-bold text-sm ${
+                              isWin ? "text-emerald-400" : "text-rose-400"
+                            }`}>
+                              {isWin ? "+" : ""}${netPnl.toFixed(2)}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
 
           </div>

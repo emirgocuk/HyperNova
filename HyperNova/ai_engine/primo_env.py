@@ -51,9 +51,11 @@ class PrimoCryptoTradingEnv(gym.Env):
         df_candles: Optional[np.ndarray] = None,
         initial_balance: float = 1000.0,
         max_notional: float = 800.0,
-        leverage: float = 1000.0,
-        taker_fee_pct: float = 0.00035,   # 0.035% Taker fee
-        maker_fee_pct: float = 0.00010,   # 0.010% Maker fee
+        leverage: float = 200.0,
+        exchange_preset: str = "MEXC",
+        taker_fee_pct: float = 0.0002,   # 0.02% MEXC Taker fee
+        maker_fee_pct: float = 0.0000,   # 0.00% MEXC Maker fee
+        slippage_pct: float = 0.0001,    # 0.01% Realistic Slippage
         risk_free_rate: float = 0.0,
         sharpe_warmup_window: int = 30
     ):
@@ -62,8 +64,10 @@ class PrimoCryptoTradingEnv(gym.Env):
         self.initial_balance = initial_balance
         self.max_notional = max_notional
         self.leverage = leverage
+        self.exchange_preset = exchange_preset
         self.taker_fee_pct = taker_fee_pct
         self.maker_fee_pct = maker_fee_pct
+        self.slippage_pct = slippage_pct
         self.risk_free_rate = risk_free_rate
         self.sharpe_warmup_window = sharpe_warmup_window
 
@@ -91,6 +95,7 @@ class PrimoCryptoTradingEnv(gym.Env):
         self.position = 0.0          # Current position notional ($)
         self.position_dir = 0        # -1: Short, 0: Flat, 1: Long
         self.entry_price = 0.0
+        self.total_fees_paid = 0.0
         self.returns_history: List[float] = []
         self.step_idx = 0
 
@@ -102,6 +107,7 @@ class PrimoCryptoTradingEnv(gym.Env):
         self.position = 0.0
         self.position_dir = 0
         self.entry_price = 0.0
+        self.total_fees_paid = 0.0
         self.returns_history.clear()
         self.step_idx = 0
 
@@ -139,10 +145,11 @@ class PrimoCryptoTradingEnv(gym.Env):
         current_price: float = 100.0,
         tech_vector: Optional[np.ndarray] = None,
         nlp_vector: Optional[np.ndarray] = None,
-        micro_vector: Optional[np.ndarray] = None
+        micro_vector: Optional[np.ndarray] = None,
+        is_maker: bool = False
     ) -> Tuple[np.ndarray, float, bool, bool, dict]:
         """
-        Executes a continuous action step:
+        Executes a continuous action step with realistic MEXC fees and slippage:
         action in [-1.0, 1.0]:
           +1.0 = Max Long ($800 notional)
           -1.0 = Max Short (-$800 notional)
@@ -150,6 +157,7 @@ class PrimoCryptoTradingEnv(gym.Env):
         """
         self.step_idx += 1
         target_action = float(np.clip(action[0] if isinstance(action, (np.ndarray, list)) else action, -1.0, 1.0))
+        fee_rate = self.maker_fee_pct if is_maker else self.taker_fee_pct
 
         # Target notional based on continuous action
         target_notional = target_action * self.max_notional
@@ -159,24 +167,30 @@ class PrimoCryptoTradingEnv(gym.Env):
         fee_paid = 0.0
         pnl = 0.0
 
+        # Apply slippage on exit
+        exit_slip = current_price * self.slippage_pct * (-1.0 if self.position_dir == 1 else 1.0)
+        eff_exit_price = current_price + exit_slip
+
         if self.position_dir != 0 and self.entry_price > 0:
-            price_change_pct = (current_price - self.entry_price) / self.entry_price
+            price_change_pct = (eff_exit_price - self.entry_price) / self.entry_price
             pnl = self.position * price_change_pct * self.position_dir
 
-        # Position change event
+        # Position change event (rebalance or new entry)
         notional_change = abs(target_notional - (self.position * self.position_dir))
         if notional_change > 10.0:  # Action threshold
-            fee_paid = notional_change * self.taker_fee_pct
+            fee_paid = notional_change * fee_rate
 
-        # Update position
+        # Update position with entry slippage
         if target_dir != self.position_dir or abs(abs(target_notional) - self.position) > 10.0:
+            entry_slip = current_price * self.slippage_pct * (1.0 if target_dir == 1 else -1.0)
             self.position = abs(target_notional)
             self.position_dir = target_dir
-            self.entry_price = current_price
+            self.entry_price = current_price + entry_slip
 
         # Net step return on balance
         net_step_pnl = pnl - fee_paid
         self.balance += net_step_pnl
+        self.total_fees_paid += fee_paid
         step_return = net_step_pnl / max(self.balance, 1.0)
 
         # 2. Compute Two-Phase Dynamic Sharpe Reward
