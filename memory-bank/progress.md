@@ -27,3 +27,11 @@
 ## Phase 27: Android APK & GitHub Actions CI/CD (COMPLETED)
 - [x] **Android APK Mimarisi (`android/`)**: Tam ekran donanım hızlandırmalı panel ve 7/24 kesintisiz Foreground Servisi (`HyperNovaService.java`).
 - [x] **Bulutta Otomatik APK Derleme (`.github/workflows/build_apk.yml`)**: GitHub'a kod yüklendiğinde otomatik `HyperNova-v1.0.apk` üreten CI/CD pipeline'ı.
+
+## Phase 28: Primo Framework Academic DRL + LLM Integration (IN PROGRESS 🚀)
+- [x] **Academic Paper Reading & Mathematical Digestion**: Botunac et al. (2025) paper 100% analyzed. Extracted all formulas (SMA, MACD, BB, RSI, CCI, DX, State, Action, Two-Phase Dynamic Sharpe Reward, PPO hyperparameters, Benchmark results).
+- [x] **Master Plan Artifact**: Comprehensive master plan written to `memory-bank/primo-paper-master-plan.md`.
+- [ ] **Phase 1 Implementation: Primo Mathematical Indicators Module (`HyperNova/ai_engine/primo_indicators.py`)**: All 6 technical indicators with full numpy vectorized speed.
+- [ ] **Phase 2 Implementation: PrimoGPT NLP Module (`HyperNova/ai_engine/primo_nlp.py`)**: 7 structured sentiment & risk features.
+- [ ] **Phase 3 Implementation: Gymnasium Environment & Reward Function (`HyperNova/ai_engine/primo_env.py`)**: Custom environment with two-phase dynamic Sharpe reward.
+- [ ] **Phase 4 Implementation: PPO Training & Unified API Integration (`HyperNova/ai_engine/primo_agent.py`)**: Live inference connected to `unified_api.py`.

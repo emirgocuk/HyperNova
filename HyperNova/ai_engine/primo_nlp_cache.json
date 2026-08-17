@@ -1,0 +1,24 @@
+{
+  "SOL": {
+    "news_relevance": 2,
+    "sentiment": 1,
+    "price_impact": 3,
+    "trend_direction": 1,
+    "earnings_impact": 0,
+    "investor_confidence": 3,
+    "risk_profile_change": 0,
+    "last_updated": 1786990516.9560742,
+    "source": "heuristic_quant"
+  },
+  "ETH": {
+    "news_relevance": 1,
+    "sentiment": -1,
+    "price_impact": -3,
+    "trend_direction": -1,
+    "earnings_impact": 0,
+    "investor_confidence": -3,
+    "risk_profile_change": -2,
+    "last_updated": 1786990516.95665,
+    "source": "heuristic_quant"
+  }
+}

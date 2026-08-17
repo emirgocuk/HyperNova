@@ -1,79 +1,88 @@
-# System Patterns
+# System Patterns — HyperNova + Primo AI Architecture
 
-## System Architecture: "Next-Gen Institutional Hybrid Engine"
+## Unified Architecture: "Primo-Enhanced Deep Reinforcement Learning Engine"
 
-The HyperNova architecture integrates institutional quantitative portfolio theory, K-line foundation transformers, multi-agent debate protocols, and a sub-second 1000:1 leverage execution loop.
+The HyperNova architecture integrates Primo's academic state-of-the-art DRL pipeline (Botunac et al., 2025) with HyperLiquid's sub-second crypto microstructure feeds and institutional 1000:1 execution.
 
 ```mermaid
 flowchart TD
-    subgraph Sensory_Data ["1. Sensory & Real-Time Data"]
-        HyperLiquid_Stream["HyperLiquid 24/7 API (1m Candles & Mid-Prices)"]
-        FeatureExtractor["16 Invariant K-Line Candle Features"]
-        HyperLiquid_Stream --> FeatureExtractor
+    subgraph Layer1 ["1. Multi-Modal Data Ingestion"]
+        HL_Market["HyperLiquid 24/7 API (1m OHLCV, Trades, Mid-Price)"]
+        HL_Micro["L2 Orderbook (OIR), Funding Rate, Open Interest, Basis"]
+        News_Feed["Crypto News & Social Headlines (Finnhub / Coindesk / RSS)"]
     end
 
-    subgraph The_Brain ["2. The AI & Multi-Agent Brain"]
-        Kronos["Kronos K-Line Foundation Transformer (Direction & Quantiles)"]
-        Regime["Regime Classifier (Bull, Bear, Chop, Shock)"]
-        Vibe_Deliberation["Vibe-Trading 3-Agent Protocol (Macro, Quant Critic, Risk Auditor)"]
-        FeatureExtractor --> Kronos
-        FeatureExtractor --> Regime
-        Kronos & Regime --> Vibe_Deliberation
+    subgraph Layer2 ["2. Dual Feature Generation Engine"]
+        TechEngine["Primo Technical Engine (SMA30/60, MACD, BB20, RSI14, CCI20, DX14)"]
+        NLP_Module["PrimoGPT NLP Module (7 Structured Features: Sentiment, Trend, Risk...)"]
+        MicroEngine["4-Factor Composite Alpha Processor"]
+
+        HL_Market --> TechEngine
+        News_Feed --> NLP_Module
+        HL_Micro --> MicroEngine
     end
 
-    subgraph Portfolio_Execution ["3. Sizing & 1000:1 Scalp Execution"]
-        Skfolio_Alloc["skfolio Portfolio Allocator (HRP & Dynamic ATR)"]
-        Paper_Account["1000:1 Paper Engine (Margin, Equity, Multi-Asset Tracking)"]
-        Trailing_Engine["Dynamic Trailing Profit Maximizer (ROE Calibrated)"]
-        Vibe_Deliberation --> Skfolio_Alloc
-        Skfolio_Alloc --> Paper_Account
-        Paper_Account <--> Trailing_Engine
+    subgraph Layer3 ["3. Expanded MDP State Space (S_t)"]
+        StateConcat["Concatenated State Vector:\n[Balance, Shares, Values, Prices, 6xTechInd, 7xNLP, 4xMicro]"]
+        TechEngine --> StateConcat
+        NLP_Module --> StateConcat
+        MicroEngine --> StateConcat
     end
 
-
-    subgraph Control_Tower ["4. Real-Time Glassmorphic Control Tower"]
-        Dashboard["Flask + SocketIO Real-Time Dashboard (:5000)"]
-        Dashboard <--> Paper_Account
-    end
-
-    subgraph Edge_Mobile_Collector ["5. 24/7 Mobile Telemetry & Data Harvest Node"]
-        Phone_Service["Android Foreground Service (HyperNovaService + WakeLock)"]
-        Data_Logger["Autonomous Microstructure Logger (core/data_logger.py)"]
-        Local_DB[("Local trade_memory.db (L2, Funding, OI, PnL)")]
+    subgraph Layer4 ["4. PrimoRL Decision Engine (PPO)"]
+        PPO_Agent["PPO Neural Policy π(a|s) (Stable-Baselines3 / Gymnasium)"]
+        ContinuousAction["Continuous Action Space A_t ∈ [-1.0, +1.0]\n(Exact Position Sizing & Direction)"]
         
-        Phone_Service --> Data_Logger
-        Data_Logger --> Local_DB
+        StateConcat --> PPO_Agent
+        PPO_Agent --> ContinuousAction
     end
 
-    subgraph Central_AI_Hub ["6. Central AI Training & Model Synthesis"]
-        DB_Sync["Telemetry Sync (USB/WiFi/Cloud Transfer)"]
-        Trainer["Federated Trainer (tools/train_from_phone_data.py)"]
-        Learned_Rules["edge_learned_rules.json (AI Weights & Filters)"]
+    subgraph Layer5 ["5. Execution & Dynamic Reward Feedback"]
+        ExecutionEngine["1000:1 Scalper Execution (HyperLiquid Perp / Paper Account)"]
+        DynamicReward["Two-Phase Dynamic Sharpe Reward:\nPhase 1 (<30): Raw E[r_p]\nPhase 2 (≥30): Differential Sharpe (R_p - R_f) / σ_p"]
+        
+        ContinuousAction --> ExecutionEngine
+        ExecutionEngine --> DynamicReward
+        DynamicReward -.-> PPO_Agent
+    end
 
-        Local_DB -.-> DB_Sync
-        DB_Sync --> Trainer
-        Trainer --> Learned_Rules
-        Learned_Rules -.-> Phone_Service
+    subgraph Layer6 ["6. Control Tower & UI Ecosystem"]
+        UnifiedAPI["FastAPI Unified Server (control_tower/unified_api.py)"]
+        NextJS_UI["Next.js Glassmorphic Web Dashboard (:3000)"]
+        Android_App["Android Mobile Node (Foreground Service & Telemetry)"]
+        
+        UnifiedAPI <--> ExecutionEngine
+        UnifiedAPI <--> NextJS_UI
+        UnifiedAPI <--> Android_App
     end
 ```
 
-### Core Components
-1. **Sensory System & Feature Ingestion:**
-   - Real-time 1m candle fetching from HyperLiquid with in-memory caching.
-   - Extracts 16 scale-invariant candle features for the foundation transformer.
-2. **The Brain (Kronos + Vibe-Trading + Regime Classifier):**
-   - **Kronos Foundation Model**: PyTorch transformer evaluating raw candle geometry without scale dependencies.
-   - **Regime Classifier**: Determines Bull/Bear/Chop/Shock using ADX, EMA ribbons, and ATR ratios.
-   - **Vibe-Trading Protocol**: Multi-agent consensus gating before risk is committed.
-3. **Institutional Allocator (`skfolio`):**
-   - Implements Hierarchical Risk Parity (HRP) and CVaR optimization for multi-asset risk balancing.
-4. **1000:1 Execution Engine & Dynamic Profit Maximizer:**
-   - **Micro-Margin Math**: $800 Notional uses $0.80 Margin per trade.
-   - **Dynamic Trailing**: Winning trades (`+%0.07` / `+%70 ROE`) are never cut by time, riding trends until a 0.03% pullback occurs.
-   - **Dead-Weight Timeout**: Stagnant trades are cleared at 2.5 minutes.
-5. **Real-Time Control Tower:**
-   - Flask + SocketIO streaming multi-asset prices, 6-metric position cards, ROE %, and auto-refreshing trade history.
-6. **Mobile Edge Node & Telemetry Harvester:**
-   - **Zero-Setup Cloud Build**: Derives APKs via GitHub Actions / Colab CI/CD, eliminating the need for heavy local Android Studio installations.
-   - **24/7 Phone Data Collection**: Operates as a persistent Android Foreground Service, capturing orderbook imbalances (OIR), funding rates, and trade telemetry into `trade_memory.db`.
-   - **Feedback & Rule Refinement**: Telemetry from mobile devices is synced to PC to train `edge_learned_rules.json`, continuously boosting bot win rate.
+---
+
+## Key System Patterns
+
+### 1. Dual Feature Representation (State Vector S_t)
+- **Quantitative Vector**:
+  - $SMA_{30}$, $SMA_{60}$ (Long-term Trend)
+  - $MACD_{12,26,9}$ (Momentum & Convergence)
+  - $Bollinger_{20,2.0}$ (Volatility bands)
+  - $RSI_{14}$ (Exponential smoothed momentum)
+  - $CCI_{20}$ (Mean Absolute Deviation cycles)
+  - $DX_{14}$ (Directional Movement strength)
+- **Qualitative Vector (PrimoGPT 7 Features)**:
+  - `news_relevance` $[0..2]$, `sentiment` $[-1..1]$, `price_impact` $[-3..3]$, `trend_direction` $[-1..1]$, `earnings_impact` $[-2..2]$, `investor_confidence` $[-3..3]$, `risk_profile_change` $[-2..2]$.
+- **Microstructure Vector**:
+  - `L2 OIR` $[-100..100]$, `Funding Rate APR`, `Open Interest`, `Basis Premium`.
+
+### 2. Continuous Policy Execution
+- Unlike discrete buy/hold/sell frameworks, PrimoRL outputs a scalar $A_t \in [-1.0, 1.0]$.
+- Position size is computed smoothly:
+  $$\text{Target Position} = \text{round}\left(A_t \times \frac{\text{Max Notional USD}}{\text{Current Price}}\right)$$
+
+### 3. Dynamic Two-Phase Sharpe Ratio Reward
+- **Warmup Phase ($t < 30$)**: Uses raw portfolio returns $E[r_p]$ to avoid statistical instability on small sample sizes.
+- **Adaptive Risk Phase ($t \ge 30$)**: Switches to rolling Sharpe Ratio $(R_p - R_f)/\sigma_p$ ensuring the agent prioritizes risk-adjusted consistency over volatile gambles.
+
+### 4. Zero-Leakage Architecture
+- Strict separation between training data and inference state.
+- During live execution, PrimoGPT only parses current news with zero look-ahead bias.

@@ -1,65 +1,64 @@
 # Active Context — HyperNova AI Trading Bot
 
 ## Current Focus
-**1000:1 Live Crypto Scalper Running 24/7 with Dynamic Trailing Profit Maximizer & Next-Gen Institutional Stack**
+**End-to-End Implementation of Academic DRL + LLM Architecture (Primo Framework — Botunac et al., 2025)**
+Transforming HyperNova from static rules into a unified, mathematically grounded Reinforcement Learning (PPO) + LLM Feature Extraction trading system.
 
-## What Was Just Done (2026-08-16)
+---
 
-1. **Next-Gen Institutional Quant Integration**:
-   - **`skfolio` (Portfolio Optimization)**: Installed `skfolio 0.20.2` (with `clarabel`, `cvxpy`). Implemented `PortfolioAllocator` using Hierarchical Risk Parity (HRP), CVaR optimization, and dynamic ATR-based sizing.
-   - **`Kronos K-Line Foundation Model`**: Built PyTorch K-Line transformer extracting 16 invariant candle features (open/high/low/close ratios, volume, return momentum) for directional probability & multi-horizon quantile outputs.
-   - **`Vibe-Trading Protocol`**: Built 3-agent deliberation protocol (Macro & Funding Analyst, Quant Critic, Risk Auditor) with weighted consensus gating.
-   - **`Market Regime Classifier`**: Multi-indicator classification (`TRENDING_BULL`, `TRENDING_BEAR`, `RANGING_CHOP`, `VOLATILITY_SHOCK`).
-   - **`Nautilus-Style Event Backtester`**: Bar-by-bar backtest engine with realistic spreads, slippage, and maker/taker fee modeling.
+## 📌 Status: Academic Paper Digested & Master Plan Created
+We have completely read, parsed, and mathematically structured the 2025 academic paper:
+> **"Automated Trading Framework Using LLM-Driven Features and Deep Reinforcement Learning"**  
+> *Ive Botunac, Tomislav Petković, Jurica Bosna (Big Data Cogn. Comput. 2025, 9, 317)*
 
-2. **1000:1 Leverage Fast Scalper Engine (`HyperNova/run_live.py`)**:
-   - **24/7 Live Crypto Markets**: Connected to HyperLiquid 1-minute live data feeds for `SOL`, `HYPE`, and `BTC`.
-   - **Micro-Margin Math (1000:1)**: $800 Notional position size uses only **$0.80 margin** per trade.
-   - **Instant Signal Reversals (Flip)**: Automatically flips LONG ↔ SHORT on indicator extremes without lag.
-   - **Dynamic Trailing Profit Maximizer (Trend-Rider)**:
-     - Winning trades (`+%0.07` / `+%70 ROE`) are **never cut by time** — trailed dynamically to capture full waves until a 0.03% pullback from peak.
-     - 2.5-minute timeout applies **only** to stagnant/dead-weight positions.
-   - **Paper Account Upgrades**: Real-time margin levels %, used margin, free margin, and trade history tracking.
+All 20/20 critical formulas, architectures, hyperparameter grids, and benchmark results are fully documented in [`primo-paper-master-plan.md`](file:///d:/Projects/playroom/trading-bot/memory-bank/primo-paper-master-plan.md).
 
-3. **Rich Glassmorphic Web Dashboard**:
-   - Upgraded UI at `http://localhost:5000` with live PnL, ROE % badges, 6-metric position cards (Entry, Current, TP, SL, Margin, Notional), and real-time 2s auto-refreshing trade history.
+---
 
-4. **100% Ücretsiz 4 Faktörlü Kurumsal Mikroyapı Entegrasyonu (4-Factor Quant Engine)**:
-   - **1️⃣ L2 Orderbook Derinliği (OIR %)**: Top 5 Bid/Ask kademe dengesiyle anlık alıcı/satıcı baskısı.
-   - **2️⃣ Gerçek Zamanlı Fonlama Oranları (Funding APR %)**: Piyasadaki aşırı Long/Short sıkışmalarını önceden tespit eder.
-   - **3️⃣ Açık Pozisyon (Open Interest $M) & 24s Hacim**: Piyasaya giren kurumsal para akışı.
-   - **4️⃣ Prim Farkı (Basis Premium %)**: Spot (Oracle) ile Vadeli (Mark) fiyat ayrışması.
-   - **🎯 Birleşik Alpha Skoru (Composite Alpha Score [-100..+100])**: 4 faktörün ağırlıklı toplamı ile sahte kırılımları (fakeouts) filtreleyen nihai onay motoru.
+## 🧠 Core Architecture Pillars to Implement
 
-5. **Android APK & Edge-Cloud Eğitim İstasyonu (Edge-Cloud Pipeline)**:
-   - **`android/` Proje Şablonu**: `AndroidManifest.xml` (Foreground Service + WakeLock), `MainActivity.java` (Tam Ekran Koyu Arayüz), `HyperNovaService.java` (7/24 Kesintisiz Arka Plan Motoru).
-   - **`HyperNova/core/data_logger.py`**: Telefonda SQLite'a (`trade_memory.db`) 7/24 otonom mikroyapı ve trade sonucu kaydı.
-   - **`HyperNova/tools/train_from_phone_data.py`**: Telefondan gelen verileri bilgisayarda analiz edip modeli eğiten eğitim istasyonu scripti.
-   - **`.github/workflows/build_apk.yml`**: GitHub Actions ile tek tıkla bulutta APK derleme pipeline'ı.
+### 1. Mathematical Technical Engine (6 Indicators)
+- **SMA(30, 60)**: Trend baseline $(1/n) \sum P_{t-i}$
+- **MACD(12, 26, 9)**: Momentum $(EMA_{12} - EMA_{26})$ & Signal Line $EMA_9(MACD)$
+- **Bollinger Bands(20, 2.0)**: Volatility bounds $SMA_{20} \pm 2\sigma$
+- **RSI(14)**: Momentum $100 - (100 / (1 + RS))$ with exponential smoothing
+- **CCI(20)**: Cyclical deviations $(p_t - SMA(p_t)) / (0.015 \times MAD)$
+- **DX(14)**: Trend strength $|+DI - (-DI)| / |+DI + (-DI)| \times 100$
 
-6. **Güvenlik, Gizlilik & Telif Kalkanı (`.gitignore` & `.env.example`)**:
-   - API anahtarları, şifreler, cüzdan özel anahtarları, `.env` dosyaları engellendi.
-   - SQLite veritabanları, kullanıcı telemetri kayıtları, device ID'ler engellendi.
-   - 3. parti telifli veya devasa referans repolar (`reference_projects/`, `roadmap-moondev/`) engellendi.
+### 2. PrimoGPT: Structured 7-Feature NLP Engine
+Transforms unstructured financial / crypto texts into structured numeric features:
+1. `news_relevance` (0, 1, 2)
+2. `sentiment` (-1, 0, 1)
+3. `price_impact` (-3 to +3)
+4. `trend_direction` (-1, 0, 1)
+5. `earnings_impact` (-2 to +2)
+6. `investor_confidence` (-3 to +3)
+7. `risk_profile_change` (-2 to +2)
 
-7. **Android Mobil Veri Toplama & Edge İstasyonu (Mobile Data Harvester)**:
-   - **Hedef**: Telefona kurulan botun 7/24 kesintisiz çalışarak gerçek zamanlı piyasa mikroyapı verilerini (`trade_memory.db`) toplaması.
-   - **Sıfır Android Studio Bağımlılığı**: Bilgisayarı yormamak için APK derleme işlemi doğrudan **GitHub Actions CI/CD** veya **Google Colab** üzerinden bulutta yapılıyor.
-   - **Eğitim Döngüsü**: Telefondan aktarılan veriler PC'de `HyperNova/tools/train_from_phone_data.py` ile eğitilip en karlı kurallar (`edge_learned_rules.json`) olarak bota geri besleniyor.
-   - **Canlı Takip & Önizleme**: `scrcpy` (sıfır gecikmeli telefon yansıtma) veya Web Dashboard ile anlık izleme.
+### 3. HyperNova 4-Factor Microstructure Advantage (L2 + Perp)
+- **1️⃣ L2 Orderbook Imbalance (OIR %)**
+- **2️⃣ Real-Time Funding Rate (APR %)**
+- **3️⃣ Open Interest ($M) & 24h Volume**
+- **4️⃣ Spot/Perp Basis Premium (%)**
 
-## What To Do Next
-- Telefon veritabanı senkronizasyonunu otomatikleştirmek (ADB / WiFi transfer scripti).
-- Telefondan toplanan L2 derinlik ve fonlama verileriyle modelin kazanma oranını (Win Rate) optimize eden çevrimdışı RL / Decision Transformer eğitimini çalıştırmak.
-- Varlık evrenini yüksek volatiliteye sahip trend token'larla genişletmek.
+### 4. PrimoRL: DRL Trading Agent (PPO + Continuous Space)
+- **Algorithm**: Proximal Policy Optimization (PPO) — proven superior over SAC & A2C with textual features.
+- **State Space**: Flattened concatenated vector $[Balance, Shares, Values, Prices, TechInd, NLP, Microstructure]$.
+- **Action Space**: Continuous $A_t \in [-1.0, +1.0]$ scaled to position size: $ActualPosition = A_t \times MaxNotional / CurrentPrice$.
+- **Reward Function**: **Two-Phase Dynamic Sharpe Ratio**:
+  - Phase 1 ($< 30$ returns): Raw portfolio expected return $E[r_p]$.
+  - Phase 2 ($\ge 30$ returns): Differential / Dynamic Sharpe Ratio $(R_p - R_f) / \sigma_p$.
 
-## Key File Locations
-- Live Scalper: `HyperNova/run_live.py`
-- Paper Account Engine: `HyperNova/core/paper_account.py`
-- Web Dashboard Server: `HyperNova/core/web_server.py`
-- Dashboard UI: `HyperNova/templates/index.html`, `HyperNova/static/app.js`, `HyperNova/static/style.css`
-- skfolio Allocator: `HyperNova/core/portfolio_allocator.py`
-- Kronos AI Engine: `HyperNova/ai_engine/kronos_engine.py`
-- Vibe Agent Deliberation: `HyperNova/agents/vibe_agent.py`
-- Regime Classifier: `HyperNova/core/regime_classifier.py`
-- Event Backtester: `HyperNova/core/event_backtester.py`
+---
+
+## 🚀 Execution Roadmap (Next Immediate Steps)
+
+- [ ] **Phase 1: Math & Technical Indicators Engine**
+  - Create standalone high-performance indicator module (`HyperNova/ai_engine/primo_indicators.py`) implementing SMA, MACD, BB, RSI, CCI, DX with unit tests.
+- [ ] **Phase 2: PrimoGPT NLP Feature Extractor**
+  - Create `HyperNova/ai_engine/primo_nlp.py` generating the exact 7 structured features via LLM prompt / fallback heuristics.
+- [ ] **Phase 3: Gymnasium Crypto Trading Environment & Reward Engine**
+  - Build `HyperNova/ai_engine/primo_env.py` with the Two-Phase Dynamic Sharpe Reward function and continuous action space.
+- [ ] **Phase 4: PPO Model Training & Live Inference Pipeline**
+  - Implement `HyperNova/ai_engine/primo_agent.py` using Stable-Baselines3 PPO.
+  - Connect inference output directly to `unified_api.py` execution loop.
